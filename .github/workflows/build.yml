@@ -1,8 +1,8 @@
-name: Compile Kernel Moto G8 (Auto Build)
+name: Compile Kernel Moto G8 (Neutron Clang)
 
 on:
   push:
-    branches: [ "lineage-18.1" ]
+    branches: [ "lineage-18.1", "main" ]
   workflow_dispatch:
 
 jobs:
@@ -12,44 +12,84 @@ jobs:
       - name: Checkout Kernel Source
         uses: actions/checkout@v4
         with:
-          ref: lineage-18.1
+          submodules: true
 
-      - name: Setup Compilation Environment
+      - name: Install Dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32z1-dev libelf-dev liblz4-tool libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc yasm zlib1g-dev libncurses5-dev
+          sudo apt update && sudo apt install -y \
+            git device-tree-compiler lz4 xz-utils zlib1g-dev openjdk-17-jdk gcc g++ python3 python-is-python3 \
+            p7zip-full android-sdk-libsparse-utils erofs-utils flex bison gperf build-essential zip curl \
+            libc6-dev libncurses-dev libx11-dev libreadline-dev libgl1 libgl1-mesa-dev bc grep \
+            libxml2-utils xsltproc kmod openssl libelf-dev pahole libssl-dev libarchive-tools zstd rsync
 
-      - name: Setup Toolchain (Clang + GCC)
+      - name: Setup Toolchains (Neutron Clang & ARM GCC)
         run: |
-          curl -LO https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902b.tar.gz
-          mkdir -p clang
-          tar -C clang -xzf clang-r383902b.tar.gz
-          git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64-linux-android-4.9
+          mkdir -p "${HOME}/toolchains/neutron-clang"
+          cd "${HOME}/toolchains/neutron-clang"
+          curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman" && chmod +x antman
+          bash antman -S && bash antman --patch=glibc
 
-      - name: Compile using Lineage Kernel Standards
+          mkdir -p "${HOME}/toolchains/gcc"
+          cd "${HOME}/toolchains/gcc"
+          curl -LO "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
+          tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
+
+      - name: Build Kernel
         run: |
-          export PATH="${{ github.workspace }}/clang/bin:${{ github.workspace }}/aarch64-linux-android-4.9/bin:$PATH"
+          export KERNEL_ROOT="$(pwd)"
           export ARCH=arm64
-          export SUBARCH=arm64
-          export CROSS_COMPILE=aarch64-linux-android-
-          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export KBUILD_BUILD_USER="@ravindu644"
 
-          # Corrige o erro de multiplas definições do GCC moderno nos utilitários do host (dtc)
-          export HOSTCFLAGS="-std=gnu89 -fcommon"
+          export PATH="${HOME}/toolchains/neutron-clang/bin:${PATH}"
+          export NEUTRON_PATH="${HOME}/toolchains/neutron-clang/bin"
+          export LD_LIBRARY_PATH="${HOME}/toolchains/neutron-clang/lib:${LD_LIBRARY_PATH}"
 
-          mkdir -p out
-          make O=out vendor/rav_defconfig
-          make -j$(nproc) O=out CC=clang HOSTCC=gcc HOSTCXX=g++
-          make -j$(nproc) O=out modules HOSTCC=gcc HOSTCXX=g++
+          BUILD_CROSS_COMPILE="${HOME}/toolchains/gcc/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-"
+          BUILD_CC="${HOME}/toolchains/neutron-clang/bin/clang"
 
-      - name: Package Output
-        run: |
-          mkdir -p compiled_output/modules/vendor/lib/modules
-          cp out/arch/arm64/boot/Image.gz-dtb compiled_output/
-          find out -name "*.ko" -exec cp {} compiled_output/modules/vendor/lib/modules/ \;
+          mkdir -p "${KERNEL_ROOT}/out" "${KERNEL_ROOT}/build"
 
-      - name: Upload Kernel Artifacts
+          # ATENÇÃO: Substitua 'your_defconfig' pelo defconfig correto do seu device (ex: rav_defconfig ou o defconfig da lineage)
+          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j"$(nproc)" \
+            ARCH=arm64 \
+            CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
+            CC="${BUILD_CC}" \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            AR="${NEUTRON_PATH}/llvm-ar" \
+            NM="${NEUTRON_PATH}/llvm-nm" \
+            LD="${NEUTRON_PATH}/ld.lld" \
+            STRIP="${NEUTRON_PATH}/llvm-strip" \
+            OBJCOPY="${NEUTRON_PATH}/llvm-objcopy" \
+            OBJDUMP="${NEUTRON_PATH}/llvm-objdump" \
+            READELF="${NEUTRON_PATH}/llvm-readelf" \
+            HOSTCC="${NEUTRON_PATH}/clang" \
+            HOSTCXX="${NEUTRON_PATH}/clang++" \
+            vendor/rav_defconfig
+
+          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j"$(nproc)" \
+            ARCH=arm64 \
+            CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
+            CC="${BUILD_CC}" \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            LLVM=1 \
+            LLVM_IAS=1 \
+            AR="${NEUTRON_PATH}/llvm-ar" \
+            NM="${NEUTRON_PATH}/llvm-nm" \
+            LD="${NEUTRON_PATH}/ld.lld" \
+            STRIP="${NEUTRON_PATH}/llvm-strip" \
+            OBJCOPY="${NEUTRON_PATH}/llvm-objcopy" \
+            OBJDUMP="${NEUTRON_PATH}/llvm-objdump" \
+            READELF="${NEUTRON_PATH}/llvm-readelf" \
+            HOSTCC="${NEUTRON_PATH}/clang" \
+            HOSTCXX="${NEUTRON_PATH}/clang++" \
+            Image
+
+          cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_ROOT}/build"
+
+      - name: Upload Kernel Image Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MotoG8-Kernel-Lineage
-          path: compiled_output/*
+          name: Kernel-Image-Neutron
+          path: build/Image
