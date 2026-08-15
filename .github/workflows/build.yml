@@ -21,12 +21,9 @@ jobs:
 
       - name: Setup Toolchain (Clang + GCC)
         run: |
-          # Baixar e extrair o seu Clang específico
           curl -LO https://github.com/ravindu644/Android-Kernel-Tutorials/releases/download/toolchains/clang-r383902b.tar.gz
           mkdir -p clang
           tar -C clang -xzf clang-r383902b.tar.gz
-          
-          # Baixar o GCC padrão da Lineage (necessário para bibliotecas auxiliares)
           git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64-linux-android-4.9
 
       - name: Compile using Lineage Kernel Standards
@@ -36,11 +33,15 @@ jobs:
           export SUBARCH=arm64
           export CROSS_COMPILE=aarch64-linux-android-
           export CLANG_TRIPLE=aarch64-linux-gnu-
+          
+          # Fix for GCC 10+ multiple definition error
+          export KCFLAGS="-fno-common"
+          export KCPPFLAGS="-fno-common"
 
           mkdir -p out
           make O=out vendor/rav_defconfig
-          make -j$(nproc) O=out CC=clang
-          make -j$(nproc) O=out modules
+          make -j$(nproc) O=out CC=clang HOSTCC=gcc HOSTCXX=g++
+          make -j$(nproc) O=out modules HOSTCC=gcc HOSTCXX=g++
 
       - name: Package Output
         run: |
