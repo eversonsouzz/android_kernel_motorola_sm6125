@@ -34,8 +34,8 @@ jobs:
           export CROSS_COMPILE=aarch64-linux-android-
           export CLANG_TRIPLE=aarch64-linux-gnu-
 
-          sed -i 's/-fcommon//g' scripts/dtc/Makefile || true
-          sed -i 's/YYLTYPE yylloc;/extern YYLTYPE yylloc;/g' scripts/dtc/dtc-lexer.l || true
+          # Corrige o erro de multiplas definições do GCC moderno nos utilitários do host (dtc)
+          export HOSTCFLAGS="-std=gnu89 -fcommon"
 
           mkdir -p out
           make O=out vendor/rav_defconfig
