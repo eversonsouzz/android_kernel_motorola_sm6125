@@ -68,7 +68,12 @@ jobs:
             HOSTCXX="${NEUTRON_PATH}/clang++" \
             vendor/rav_defconfig
 
-          # 2. Compile Image with HOSTCFLAGS="-fcommon" and fixed -j4
+          # Desativar MODVERSIONS para evitar erros de CRC com LLD estrito
+          cd "${KERNEL_ROOT}/out"
+          ../scripts/config --disable CONFIG_MODVERSIONS
+          cd "${KERNEL_ROOT}"
+
+          # 2. Compile Image com KBUILD_LDFLAGS="-z notext" para aceitar relocações do LLD
           make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j4 \
             ARCH=arm64 \
             CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
@@ -86,6 +91,7 @@ jobs:
             HOSTCC="${NEUTRON_PATH}/clang" \
             HOSTCXX="${NEUTRON_PATH}/clang++" \
             HOSTCFLAGS="-fcommon" \
+            KBUILD_LDFLAGS="-z notext" \
             Image
 
           cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_ROOT}/build"
