@@ -16,7 +16,7 @@ jobs:
 
       - name: Setup Sukisu Ultra
         run: |
-          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/KernelSU/main/kernel/setup.sh" | bash -s main
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
       - name: Install Dependencies
         run: |
