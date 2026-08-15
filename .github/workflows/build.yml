@@ -14,6 +14,10 @@ jobs:
         with:
           submodules: true
 
+      - name: Setup Sukisu Ultra
+        run: |
+          curl -LSs "https://raw.githubusercontent.com/ReSukiSU/KernelSU/main/kernel/setup.sh" | bash -s main
+
       - name: Install Dependencies
         run: |
           sudo apt update && sudo apt install -y \
