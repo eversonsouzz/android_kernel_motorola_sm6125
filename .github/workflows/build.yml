@@ -50,7 +50,7 @@ jobs:
           mkdir -p "${KERNEL_ROOT}/out" "${KERNEL_ROOT}/build"
 
           # 1. Generate defconfig
-          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j"$(nproc)" \
+          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j4 \
             ARCH=arm64 \
             CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
             CC="${BUILD_CC}" \
@@ -68,8 +68,8 @@ jobs:
             HOSTCXX="${NEUTRON_PATH}/clang++" \
             vendor/rav_defconfig
 
-          # 2. Compile Image with HOSTCFLAGS="-fcommon" to fix dtc duplication error
-          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j"$(nproc)" \
+          # 2. Compile Image with HOSTCFLAGS="-fcommon" and fixed -j4
+          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j4 \
             ARCH=arm64 \
             CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
             CC="${BUILD_CC}" \
