@@ -41,7 +41,7 @@ jobs:
           make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j$(nproc) \
             ARCH=arm64 \
             CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
-            vendor/rav_defconfig
+            vendor/sofiar_defconfig
 
           # Desativar MODVERSIONS para evitar erros de CRC
           cd "${KERNEL_ROOT}/out"
