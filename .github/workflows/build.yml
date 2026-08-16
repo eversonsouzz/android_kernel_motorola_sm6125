@@ -70,7 +70,7 @@ jobs:
             READELF="${NEUTRON_PATH}/llvm-readelf" \
             HOSTCC="${NEUTRON_PATH}/clang" \
             HOSTCXX="${NEUTRON_PATH}/clang++" \
-            vendor/sofiar_defconfig
+            vendor/rav_defconfig
 
           # Desativar MODVERSIONS para evitar erros de CRC com LLD estrito
           cd "${KERNEL_ROOT}/out"
