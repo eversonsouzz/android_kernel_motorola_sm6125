@@ -6,10 +6,10 @@ on:
       defconfig:
         description: "Defconfig target (must exist in arch/arm64/configs/)"
         required: true
-        default: "vendor/sofiar_defconfig"
+        default: "vendor/rav_defconfig"
 
 env:
-  KBUILD_BUILD_USER: "@ravindu644"
+  KBUILD_BUILD_USER: "@eversonsouzz"
 
 jobs:
   build:
