@@ -43,19 +43,13 @@ jobs:
           mkdir -p out
           
           # Corrige o erro de multiple definition do yylloc no GCC moderno do Ubuntu 22.04
+          sed -i '/YYLTYPE yylloc;/d' scripts/dtc/dtc-lexer.l || true
           export HOSTCFLAGS="-fcommon"
+          export HOSTCXXFLAGS="-fcommon"
           
           make O=out ARCH=arm64 vendor/rav_defconfig
           
-          make -j$(nproc) O=out \
-            ARCH=arm64 \
-            SUBARCH=arm64 \
-            CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-android- \
-            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
-            REAL_CC=$CLANG_DIR/clang \
-            DTC=$DTC_SYS
+          make -j$(nproc) O=out ARCH=arm64 SUBARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- REAL_CC=$CLANG_DIR/clang DTC=$DTC_SYS
 
       - name: Upload Kernel Artifact
         uses: actions/upload-artifact@v4
