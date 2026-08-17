@@ -42,6 +42,9 @@ jobs:
           
           mkdir -p out
           
+          # Corrige o erro de multiple definition do yylloc no GCC moderno do Ubuntu 22.04
+          export HOSTCFLAGS="-fcommon"
+          
           make O=out ARCH=arm64 vendor/rav_defconfig
           
           make -j$(nproc) O=out \
