@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - eleven
+      - lineage 18.1
 
 jobs:
   build:
