@@ -22,36 +22,37 @@ jobs:
         run: |
           mkdir -p $GITHUB_WORKSPACE/toolchain
           cd $GITHUB_WORKSPACE/toolchain
-          
+
           # Clang AOSP r383902
           wget -q https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android11-release/clang-r383902.tar.gz
           mkdir clang && tar -xf clang-r383902.tar.gz -C clang
-          
-          # GCC Target Dependencies
+
+          # GCC Target
           git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 gcc64
           git clone --depth=1 https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_arm_arm-linux-androideabi-4.9 gcc32
 
-      - name: Compile Kernel Image and Modules
+      - name: Compile Kernel
         run: |
-          CLANG_DIR=$GITHUB_WORKSPACE/toolchain/clang/bin
-          GCC64_DIR=$GITHUB_WORKSPACE/toolchain/gcc64/bin
-          GCC32_DIR=$GITHUB_WORKSPACE/toolchain/gcc32/bin
-          
-          export PATH=$CLANG_DIR:$GCC64_DIR:$GCC32_DIR:$PATH
+          CLANG_DIR="$GITHUB_WORKSPACE/toolchain/clang"
+          GCC64_DIR="$GITHUB_WORKSPACE/toolchain/gcc64"
+          GCC32_DIR="$GITHUB_WORKSPACE/toolchain/gcc32"
+          export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
           DTC_SYS=$(which dtc)
-          
+          export HOSTCFLAGS="-fcommon"
+          export HOSTCXXFLAGS="-fcommon"
+          export HOSTLDFLAGS="-fcommon"
+          DTC_SYS="${DTC_SYS}"
           mkdir -p out
           
           # Correções completas para o GCC 12 do Ubuntu 22.04 no código do dtc antigo
           sed -i 's/YYLTYPE yylloc;/extern YYLTYPE yylloc;/g' scripts/dtc/dtc-lexer.l || true
-          sed -i '/EXTERN YYLTYPE yylloc;/d' scripts/dtc/dtc-lexer.l || true
-          
-          export HOSTCFLAGS="-fcommon -Wno-error=date-time"
-          export HOSTCXXFLAGS="-fcommon -Wno-error=date-time"
+          sed -i 's/extern YYLTYPE yylloc;/extern YYLTYPE yylloc;/g' scripts/dtc/dtc-lexer.l || true
+
+          export HOSTCFLAGS="-Wno-error=date-time"
+          export HOSTCXXFLAGS="-Wno-error=date-time"
           
           make O=out ARCH=arm64 vendor/rav_defconfig
-          
-          make -j$(nproc) O=out ARCH=arm64 SUBARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-android- CROSS_COMPILE_ARM32=arm-linux-androideabi- REAL_CC=$CLANG_DIR/clang DTC=$DTC_SYS
+          make -j$(nproc) O=out ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-androideabi- REAL_CC="$CLANG_DIR/bin/clang" DTC="$DTC_SYS"
 
       - name: Upload Kernel Artifact
         uses: actions/upload-artifact@v4
