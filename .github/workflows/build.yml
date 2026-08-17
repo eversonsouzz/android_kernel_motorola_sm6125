@@ -29,7 +29,7 @@ jobs:
           
           mkdir -p out
           
-          make O=out vendor/sofiar_defconfig
+          make O=out vendor/rav_defconfig
           
           make -j$(nproc) O=out \
             ARCH=arm64 \
