@@ -1,4 +1,4 @@
-name: Build Kernel GCC
+name: Build Kernel Clang
 
 on:
   workflow_dispatch:
@@ -12,7 +12,6 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
-
 
       - name: Install System Dependencies
         run: |
@@ -41,31 +40,22 @@ jobs:
           export PATH=$CLANG_DIR:$GCC64_DIR:$GCC32_DIR:$PATH
           DTC_SYS=$(which dtc)
           
-          BUILD_OPTIONS=(
-            ARCH=arm64
-            SUBARCH=arm64
-            CC=clang
-            CLANG_TRIPLE=aarch64-linux-gnu-
-            CROSS_COMPILE=aarch64-linux-android-
-            CROSS_COMPILE_ARM32=arm-linux-androideabi-
-            REAL_CC=$CLANG_DIR/clang
-            DTC=$DTC_SYS
-          )
-      
-      - name: Setup KernelSU
-        run: |
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
-
-      - name: Build Kernel
-        run: |
-          export ARCH=arm64
-          export SUBARCH=arm64
-          
           mkdir -p out
           
           make O=out vendor/rav_defconfig
           
           make -j$(nproc) O=out \
             ARCH=arm64 \
-            CROSS_COMPILE=aarch64-linux-gnu- \
-            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+            SUBARCH=arm64 \
+            CC=clang \
+            CLANG_TRIPLE=aarch64-linux-gnu- \
+            CROSS_COMPILE=aarch64-linux-android- \
+            CROSS_COMPILE_ARM32=arm-linux-androideabi- \
+            REAL_CC=$CLANG_DIR/clang \
+            DTC=$DTC_SYS
+
+      - name: Upload Kernel Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-image
+          path: out/arch/arm64/boot/Image.gz-dtb
