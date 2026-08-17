@@ -42,7 +42,7 @@ jobs:
           
           mkdir -p out
           
-          make O=out vendor/rav_defconfig
+          make O=out ARCH=arm64 rav_defconfig
           
           make -j$(nproc) O=out \
             ARCH=arm64 \
