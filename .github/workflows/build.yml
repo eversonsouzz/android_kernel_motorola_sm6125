@@ -36,23 +36,26 @@ jobs:
           CLANG_DIR="$GITHUB_WORKSPACE/toolchain/clang"
           GCC64_DIR="$GITHUB_WORKSPACE/toolchain/gcc64"
           GCC32_DIR="$GITHUB_WORKSPACE/toolchain/gcc32"
+          
           export PATH="$CLANG_DIR/bin:$GCC64_DIR/bin:$GCC32_DIR/bin:$PATH"
           DTC_SYS=$(which dtc)
-          export HOSTCFLAGS="-fcommon"
-          export HOSTCXXFLAGS="-fcommon"
-          export HOSTLDFLAGS="-fcommon"
-          DTC_SYS="${DTC_SYS}"
+          
           mkdir -p out
           
-          # Correções completas para o GCC 12 do Ubuntu 22.04 no código do dtc antigo
+          # Correções para o GCC 12 do Ubuntu 22.04 no código do dtc antigo
           sed -i 's/YYLTYPE yylloc;/extern YYLTYPE yylloc;/g' scripts/dtc/dtc-lexer.l || true
-          sed -i 's/extern YYLTYPE yylloc;/extern YYLTYPE yylloc;/g' scripts/dtc/dtc-lexer.l || true
 
-          export HOSTCFLAGS="-Wno-error=date-time"
-          export HOSTCXXFLAGS="-Wno-error=date-time"
+          export HOSTCFLAGS="-Wno-error=date-time -fcommon"
+          export HOSTCXXFLAGS="-Wno-error=date-time -fcommon"
           
           make O=out ARCH=arm64 vendor/rav_defconfig
-          make -j$(nproc) O=out ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-androideabi- REAL_CC="$CLANG_DIR/bin/clang" DTC="$DTC_SYS"
+          
+          make -j$(nproc) O=out ARCH=arm64 \
+            CC=clang \
+            REAL_CC="$CLANG_DIR/bin/clang" \
+            CROSS_COMPILE="$GCC64_DIR/bin/aarch64-linux-android-" \
+            CROSS_COMPILE_ARM32="$GCC32_DIR/bin/arm-linux-androideabi-" \
+            DTC="$DTC_SYS"
 
       - name: Upload Kernel Artifact
         uses: actions/upload-artifact@v4
