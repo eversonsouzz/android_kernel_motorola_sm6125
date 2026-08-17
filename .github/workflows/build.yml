@@ -1,107 +1,37 @@
-name: Compile Kernel Moto G8 (Neutron Clang)
+name: Build Kernel GCC
 
 on:
-  push:
-    branches: [ "lineage-18.1", "main" ]
   workflow_dispatch:
+  push:
+    branches:
+      - eleven
 
 jobs:
   build:
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout Kernel Source
+      - name: Checkout Source
         uses: actions/checkout@v4
-        with:
-          submodules: true
 
-      - name: Setup Sukisu Ultra
+      - name: Setup Compilation Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison flex libssl-dev libelf-dev make git python3 build-essential gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi binutils-aarch64-linux-gnu
+
+      - name: Setup KernelSU
         run: |
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
 
-      - name: Install Dependencies
-        run: |
-          sudo apt update && sudo apt install -y \
-            git device-tree-compiler lz4 xz-utils zlib1g-dev openjdk-17-jdk gcc g++ python3 python-is-python3 \
-            p7zip-full android-sdk-libsparse-utils erofs-utils flex bison gperf build-essential zip curl \
-            libc6-dev libncurses-dev libx11-dev libreadline-dev libgl1 libgl1-mesa-dev bc grep \
-            libxml2-utils xsltproc kmod openssl libelf-dev pahole libssl-dev libarchive-tools zstd rsync
-
-      - name: Setup Toolchains (Neutron Clang & ARM GCC)
-        run: |
-          mkdir -p "${HOME}/toolchains/neutron-clang"
-          cd "${HOME}/toolchains/neutron-clang"
-          curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman" && chmod +x antman
-          bash antman -S && bash antman --patch=glibc
-
-          mkdir -p "${HOME}/toolchains/gcc"
-          cd "${HOME}/toolchains/gcc"
-          curl -LO "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz"
-          tar -xf arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu.tar.xz
-
       - name: Build Kernel
         run: |
-          export KERNEL_ROOT="$(pwd)"
           export ARCH=arm64
-          export KBUILD_BUILD_USER="@ravindu644"
-
-          export PATH="${HOME}/toolchains/neutron-clang/bin:${PATH}"
-          export NEUTRON_PATH="${HOME}/toolchains/neutron-clang/bin"
-          export LD_LIBRARY_PATH="${HOME}/toolchains/neutron-clang/lib:${LD_LIBRARY_PATH}"
-
-          BUILD_CROSS_COMPILE="${HOME}/toolchains/gcc/arm-gnu-toolchain-14.2.rel1-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-"
-          BUILD_CC="${HOME}/toolchains/neutron-clang/bin/clang"
-
-          mkdir -p "${KERNEL_ROOT}/out" "${KERNEL_ROOT}/build"
-
-          # 1. Generate defconfig
-          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j4 \
+          export SUBARCH=arm64
+          
+          mkdir -p out
+          
+          make O=out vendor/sofiar_defconfig
+          
+          make -j$(nproc) O=out \
             ARCH=arm64 \
-            CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
-            CC="${BUILD_CC}" \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            AR="${NEUTRON_PATH}/llvm-ar" \
-            NM="${NEUTRON_PATH}/llvm-nm" \
-            LD="${NEUTRON_PATH}/ld.lld" \
-            STRIP="${NEUTRON_PATH}/llvm-strip" \
-            OBJCOPY="${NEUTRON_PATH}/llvm-objcopy" \
-            OBJDUMP="${NEUTRON_PATH}/llvm-objdump" \
-            READELF="${NEUTRON_PATH}/llvm-readelf" \
-            HOSTCC="${NEUTRON_PATH}/clang" \
-            HOSTCXX="${NEUTRON_PATH}/clang++" \
-            vendor/rav_defconfig
-
-          # Desativar MODVERSIONS para evitar erros de CRC com LLD estrito
-          cd "${KERNEL_ROOT}/out"
-          ../scripts/config --disable CONFIG_MODVERSIONS
-          cd "${KERNEL_ROOT}"
-
-          # 2. Compile Image com KBUILD_LDFLAGS="-z notext" para aceitar relocações do LLD
-          make -C "${KERNEL_ROOT}" O="${KERNEL_ROOT}/out" -j4 \
-            ARCH=arm64 \
-            CROSS_COMPILE="${BUILD_CROSS_COMPILE}" \
-            CC="${BUILD_CC}" \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            LLVM=1 \
-            LLVM_IAS=1 \
-            AR="${NEUTRON_PATH}/llvm-ar" \
-            NM="${NEUTRON_PATH}/llvm-nm" \
-            LD="${NEUTRON_PATH}/ld.lld" \
-            STRIP="${NEUTRON_PATH}/llvm-strip" \
-            OBJCOPY="${NEUTRON_PATH}/llvm-objcopy" \
-            OBJDUMP="${NEUTRON_PATH}/llvm-objdump" \
-            READELF="${NEUTRON_PATH}/llvm-readelf" \
-            HOSTCC="${NEUTRON_PATH}/clang" \
-            HOSTCXX="${NEUTRON_PATH}/clang++" \
-            HOSTCFLAGS="-fcommon" \
-            KBUILD_LDFLAGS="-z notext" \
-            Image
-
-          cp "${KERNEL_ROOT}/out/arch/arm64/boot/Image" "${KERNEL_ROOT}/build"
-
-      - name: Upload Kernel Image Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Kernel-Image-Neutron
-          path: build/Image
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
