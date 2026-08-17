@@ -42,10 +42,12 @@ jobs:
           
           mkdir -p out
           
-          # Corrige o erro de multiple definition do yylloc no GCC moderno do Ubuntu 22.04
-          sed -i '/YYLTYPE yylloc;/d' scripts/dtc/dtc-lexer.l || true
-          export HOSTCFLAGS="-fcommon"
-          export HOSTCXXFLAGS="-fcommon"
+          # Correções completas para o GCC 12 do Ubuntu 22.04 no código do dtc antigo
+          sed -i 's/YYLTYPE yylloc;/extern YYLTYPE yylloc;/g' scripts/dtc/dtc-lexer.l || true
+          sed -i '/EXTERN YYLTYPE yylloc;/d' scripts/dtc/dtc-lexer.l || true
+          
+          export HOSTCFLAGS="-fcommon -Wno-error=date-time"
+          export HOSTCXXFLAGS="-fcommon -Wno-error=date-time"
           
           make O=out ARCH=arm64 vendor/rav_defconfig
           
